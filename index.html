@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Science Experiment Kiosk | அறிவியல் பரிசோதனை</title>
+<style>
+  @font-face{ font-family:'Orbitron'; font-weight:500; font-display:swap; src:url('vendor/fonts/orbitron/orbitron-latin-500-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Orbitron'; font-weight:700; font-display:swap; src:url('vendor/fonts/orbitron/orbitron-latin-700-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Orbitron'; font-weight:900; font-display:swap; src:url('vendor/fonts/orbitron/orbitron-latin-900-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Space Grotesk'; font-weight:400; font-display:swap; src:url('vendor/fonts/space-grotesk/space-grotesk-latin-400-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Space Grotesk'; font-weight:500; font-display:swap; src:url('vendor/fonts/space-grotesk/space-grotesk-latin-500-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Space Grotesk'; font-weight:600; font-display:swap; src:url('vendor/fonts/space-grotesk/space-grotesk-latin-600-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Space Grotesk'; font-weight:700; font-display:swap; src:url('vendor/fonts/space-grotesk/space-grotesk-latin-700-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Noto Sans Tamil'; font-weight:400; font-display:swap; src:url('vendor/fonts/noto-sans-tamil/noto-sans-tamil-tamil-400-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Noto Sans Tamil'; font-weight:600; font-display:swap; src:url('vendor/fonts/noto-sans-tamil/noto-sans-tamil-tamil-600-normal.woff2') format('woff2'); }
+  @font-face{ font-family:'Noto Sans Tamil'; font-weight:700; font-display:swap; src:url('vendor/fonts/noto-sans-tamil/noto-sans-tamil-tamil-700-normal.woff2') format('woff2'); }
+
+  :root{
+    --void:#050814; --navy:#0a1230; --navy-light:#131c46; --navy-panel:#0e1638dd;
+    --gold:#f4b942; --gold-dim:#c99530; --cyan:#57d9e0; --cyan-dim:#2f8f96;
+    --text:#f3efe4; --text-dim:#9aa3c2; --danger:#ef6a55; --good:#6fe0a0;
+    --font-display:'Orbitron',sans-serif; --font-body:'Space Grotesk',sans-serif; --font-ta:'Noto Sans Tamil',sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{ width:100%; height:100%; overflow:hidden; background:var(--void); color:var(--text); font-family:var(--font-body); }
+  .ta{ font-family:var(--font-ta); }
+  #app{ position:fixed; inset:0; overflow:hidden; }
+  #starfield{ position:fixed; inset:0; z-index:0; }
+  #video{
+    position:fixed; inset:0; width:100%; height:100%; z-index:1;
+    object-fit:cover; filter:brightness(.32) saturate(1.1);
+    transform:scaleX(-1); opacity:0; transition:opacity .6s ease;
+  }
+  #video.visible{ opacity:1; }
+  #ui-layer{ position:fixed; inset:0; z-index:5; pointer-events:none; }
+  #ui-layer .interactive{ pointer-events:auto; }
+
+  .screen{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px; opacity:0; visibility:hidden; transition:opacity .5s ease;
+  }
+  .screen.active{ opacity:1; visibility:visible; }
+
+  .eyebrow{ font-family:var(--font-display); letter-spacing:.35em; font-size:14px; color:var(--cyan); text-transform:uppercase; margin-bottom:18px; }
+  .title-en{ font-family:var(--font-display); font-weight:900; font-size:clamp(32px,5.6vw,68px); color:var(--gold); text-shadow:0 0 30px rgba(244,185,66,.45); line-height:1.05; }
+  .title-ta{ font-family:var(--font-ta); font-weight:700; font-size:clamp(20px,3.2vw,34px); color:var(--text); margin-top:10px; }
+  .tagline{ margin-top:22px; font-size:clamp(15px,1.8vw,20px); color:var(--text-dim); max-width:700px; }
+  .tagline .ta{ display:block; margin-top:4px; font-size:.9em; }
+  .hand-prompt{ margin-top:48px; display:flex; align-items:center; gap:16px; font-family:var(--font-display); font-size:clamp(15px,1.8vw,20px); color:var(--cyan); }
+  .hand-prompt-icon{ font-size:36px; animation:wave 1.6s ease-in-out infinite; }
+  @keyframes wave{ 0%,100%{transform:rotate(0deg);} 25%{transform:rotate(-14deg);} 75%{transform:rotate(14deg);} }
+
+  .gesture-grid{ display:flex; gap:30px; margin-top:38px; flex-wrap:wrap; justify-content:center; }
+  .gesture-card{ width:200px; background:var(--navy-panel); border:1px solid #2a366b; border-radius:18px; padding:22px 16px; backdrop-filter:blur(6px); }
+  .gesture-card .g-icon{ font-size:44px; margin-bottom:12px; }
+  .gesture-card .g-name{ font-family:var(--font-display); color:var(--gold); font-size:14px; letter-spacing:.06em; }
+  .gesture-card .g-desc{ margin-top:8px; font-size:12px; color:var(--text-dim); line-height:1.5; }
+  .gesture-card .g-desc .ta{ display:block; margin-top:4px; }
+
+  /* ---------- Menu ---------- */
+  #screen-menu{ justify-content:flex-start; padding-top:56px; }
+  #menu-grid{
+    display:grid; grid-template-columns:repeat(5, 168px); gap:22px; margin-top:26px;
+    max-width:960px;
+  }
+  .menu-card{
+    width:168px; height:168px; border-radius:20px; background:var(--navy-panel);
+    border:1px solid #2a366b; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:12px; transition:border-color .2s, transform .2s; position:relative;
+  }
+  .menu-card.hover{ border-color:var(--gold); transform:translateY(-4px); }
+  .menu-card .m-icon{ font-size:46px; }
+  .menu-card .m-title{ font-family:var(--font-display); font-size:11.5px; color:var(--gold); text-align:center; letter-spacing:.02em; line-height:1.3; }
+  .menu-card .m-title-ta{ font-family:var(--font-ta); font-size:11px; color:var(--text-dim); text-align:center; line-height:1.3; }
+  .menu-hint{ margin-top:22px; font-size:13px; color:var(--text-dim); font-style:italic; }
+
+  /* ---------- Instruction ---------- */
+  .instr-icon{ font-size:80px; margin-bottom:18px; }
+
+  /* ---------- Challenge HUD ---------- */
+  #hud-top{ position:absolute; top:24px; left:0; right:0; display:flex; justify-content:center; pointer-events:none; }
+  .challenge-card{
+    background:var(--navy-panel); border:1px solid var(--gold-dim); border-radius:20px;
+    padding:12px 30px; text-align:center; backdrop-filter:blur(8px); box-shadow:0 10px 40px rgba(0,0,0,.5); max-width:620px;
+  }
+  .challenge-eyebrow{ font-family:var(--font-display); font-size:10.5px; letter-spacing:.3em; color:var(--cyan); }
+  .challenge-title{ font-family:var(--font-display); font-weight:700; font-size:clamp(18px,2.4vw,26px); color:var(--gold); margin-top:4px; }
+  .challenge-title-ta{ font-family:var(--font-ta); font-size:clamp(13px,1.5vw,17px); color:var(--text); margin-top:2px; }
+
+  #hud-timer{
+    position:absolute; top:24px; right:24px; width:60px; height:60px; border-radius:50%;
+    background:var(--navy-panel); border:2px solid var(--cyan-dim); display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:20px; color:var(--cyan);
+  }
+  #hud-timer.warn{ border-color:var(--danger); color:var(--danger); }
+  #hud-back{
+    position:absolute; top:24px; left:24px; z-index:6;
+    background:var(--navy-panel); border:1px solid #2a366b; border-radius:14px; padding:9px 16px;
+    font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:8px;
+  }
+  #hud-gesture{
+    position:absolute; bottom:24px; left:24px; background:var(--navy-panel); border:1px solid #2a366b; border-radius:14px;
+    padding:9px 15px; display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--text-dim);
+  }
+  #hud-gesture .dot{ width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:19px; }
+  #hud-badge-count{
+    position:absolute; bottom:24px; right:24px; background:var(--navy-panel); border:1px solid #2a366b; border-radius:14px;
+    padding:9px 15px; font-size:12.5px; color:var(--text-dim);
+  }
+  #hud-badge-count b{ color:var(--gold); font-family:var(--font-display); }
+
+  .toast{
+    position:absolute; top:36%; left:50%; transform:translate(-50%,-50%);
+    font-family:var(--font-display); font-size:clamp(18px,2.6vw,26px); color:var(--danger);
+    text-shadow:0 0 30px rgba(239,106,85,.6); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s; text-align:center;
+  }
+  .toast .ta{ display:block; font-size:.65em; margin-top:6px; color:#ffd2c9; }
+  .toast.show{ opacity:1; transform:translate(-50%,-50%) scale(1.06); }
+
+  /* ---------- Scene ---------- */
+  #scene-container{
+    position:absolute; left:50%; top:42%; transform:translate(-50%,-50%);
+    width:700px; max-width:86vw; height:320px;
+  }
+  #scene-container .scene-svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .wire{ fill:none; stroke:var(--text-dim); stroke-width:1.4; stroke-linecap:round; }
+  .wire.energized{ stroke:var(--gold); filter:drop-shadow(0 0 4px rgba(244,185,66,.7)); }
+  .dashline{ fill:none; stroke:#3a4680; stroke-width:1; stroke-dasharray:3,3; }
+  .dashline.energized{ stroke:var(--gold); }
+
+  .scene-emoji{
+    position:absolute; font-size:110px; transform:translate(-50%,-50%); opacity:.9; pointer-events:none; transition:transform .4s;
+  }
+  .scene-emoji.small{ font-size:70px; }
+  .scene-label{
+    position:absolute; transform:translate(-50%,0); font-size:11px; color:var(--text-dim); white-space:nowrap;
+  }
+
+  .device-mount, .slot-mount{
+    position:absolute; transform:translate(-50%,-50%);
+  }
+  .device-mount{ width:110px; height:110px; display:flex; align-items:center; justify-content:center; font-size:64px; }
+  .slot-mount{
+    width:120px; height:100px; border:2px dashed #3a4680; border-radius:16px;
+    display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.02);
+    transition:border-color .3s, background .3s; font-size:56px;
+  }
+  .slot-mount.filled{ border-style:solid; border-color:var(--gold-dim); background:rgba(244,185,66,.06); }
+  .slot-hint{ position:absolute; bottom:-28px; left:50%; transform:translateX(-50%); font-size:10.5px; color:var(--text-dim); white-space:nowrap; text-align:center; }
+
+  .icon-svg{ width:100%; height:100%; color:var(--text); }
+  .icon-svg.energized{ color:var(--gold); }
+
+  /* ---------- Success animations ---------- */
+  @keyframes fxGlow{
+    0%{ filter:drop-shadow(0 0 0 rgba(244,185,66,0)); transform:scale(1); }
+    50%{ filter:drop-shadow(0 0 16px rgba(244,185,66,.9)); transform:scale(1.18); }
+    100%{ filter:drop-shadow(0 0 9px rgba(244,185,66,.6)); transform:scale(1.05); }
+  }
+  .fx-glow{ animation:fxGlow .7s ease-out forwards; }
+  @keyframes fxPulse{
+    0%,100%{transform:scale(1);} 25%{transform:scale(1.28);} 40%{transform:scale(1);} 55%{transform:scale(1.22);} 70%{transform:scale(1);}
+  }
+  .fx-pulse{ animation:fxPulse 1.3s ease-in-out infinite; filter:drop-shadow(0 0 10px rgba(239,106,85,.7)); }
+  @keyframes fxSpin{ to{ transform:rotate(360deg); } }
+  .fx-spin{ animation:fxSpin 1s linear infinite; filter:drop-shadow(0 0 8px rgba(244,185,66,.6)); }
+  @keyframes fxAttract{ from{transform:translate(0,0);} 55%{transform:translate(var(--ax,-14px),0) scale(1.1);} to{transform:translate(calc(var(--ax,-14px) * .5),0) scale(1.05);} }
+  .fx-attract{ animation:fxAttract .6s ease-out forwards; filter:drop-shadow(0 0 8px rgba(244,185,66,.6)); }
+  @keyframes fxGrow{ 0%{transform:scale(1);} 50%{transform:scale(1.22);} 100%{transform:scale(1.08);} }
+  .fx-grow{ animation:fxGrow .6s ease-out forwards; }
+
+  /* ---------- Tray ---------- */
+  #tray{ position:absolute; left:50%; bottom:104px; transform:translateX(-50%); display:flex; gap:60px; }
+  .tray-slot{
+    width:100px; height:100px; border-radius:20px; background:var(--navy-panel); border:1px solid #2a366b;
+    display:flex; align-items:center; justify-content:center; padding:16px; position:relative; font-size:50px;
+  }
+  .tray-slot.empty{ opacity:.25; }
+  .tray-label{ position:absolute; bottom:-32px; left:50%; transform:translateX(-50%); text-align:center; font-size:11.5px; color:var(--text-dim); white-space:nowrap; }
+  .tray-label .ta{ display:block; font-size:.85em; }
+
+  #dragged-icon{
+    position:fixed; width:90px; height:90px; z-index:12; transform:translate(-50%,-50%); pointer-events:none;
+    display:none; font-size:60px; align-items:center; justify-content:center; filter:drop-shadow(0 6px 14px rgba(0,0,0,.5));
+  }
+  #dragged-icon.show{ display:flex; }
+
+  #hand-cursor{
+    position:fixed; width:32px; height:32px; z-index:11; border-radius:50%; border:2px solid var(--cyan);
+    transform:translate(-50%,-50%); pointer-events:none; opacity:0; transition:opacity .15s, border-color .15s, background .15s, width .1s, height .1s;
+  }
+  #hand-cursor.visible{ opacity:1; }
+  #hand-cursor.pinch{ background:rgba(244,185,66,.35); border-color:var(--gold); width:20px; height:20px; }
+  #hand-cursor.fist{ border-color:var(--danger); }
+
+  /* ---------- Reveal ---------- */
+  .reveal-panel{
+    background:var(--navy-panel); border:1px solid var(--gold-dim); border-radius:24px; padding:32px 42px; max-width:660px;
+    backdrop-filter:blur(10px); box-shadow:0 20px 60px rgba(0,0,0,.55);
+  }
+  #reveal-icon{ font-size:76px; margin:0 auto 14px; }
+  .fact-label{ font-family:var(--font-display); font-size:12px; letter-spacing:.3em; color:var(--cyan); }
+  .fact-en{ margin-top:10px; font-size:16.5px; line-height:1.55; }
+  .fact-ta{ margin-top:6px; font-size:13.5px; color:var(--text-dim); line-height:1.55; }
+  .badge-pill{
+    margin-top:20px; display:inline-flex; align-items:center; gap:10px;
+    background:linear-gradient(135deg,var(--gold),var(--gold-dim)); color:#241a04; padding:9px 20px;
+    border-radius:999px; font-family:var(--font-display); font-size:13px;
+  }
+  .reveal-progress{ margin-top:22px; height:5px; width:100%; background:#1c2554; border-radius:99px; overflow:hidden; }
+  .reveal-progress-fill{ height:100%; background:var(--cyan); width:100%; transform-origin:left; }
+
+  #privacy-note{ position:absolute; bottom:18px; left:0; right:0; text-align:center; font-size:11.5px; color:var(--text-dim); z-index:6; pointer-events:none; }
+  #privacy-note .ta{ display:block; font-size:10.5px; opacity:.85; }
+  #visitor-counter{
+    position:fixed; top:22px; left:22px; z-index:6; font-size:12px; color:var(--text-dim);
+    background:var(--navy-panel); border:1px solid #2a366b; border-radius:12px; padding:8px 14px;
+  }
+  #visitor-counter b{ color:var(--gold); font-family:var(--font-display); }
+  #fullscreen-btn{
+    position:fixed; top:22px; right:22px; z-index:6; background:var(--navy-panel); border:1px solid #2a366b; color:var(--text-dim);
+    width:40px; height:40px; border-radius:50%; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:.55; transition:opacity .2s;
+  }
+  #fullscreen-btn:hover{ opacity:1; }
+  #camera-error{
+    position:fixed; inset:0; z-index:20; background:var(--void); display:none; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center; padding:40px;
+  }
+  #camera-error.show{ display:flex; }
+  #camera-error .g-icon{ font-size:56px; margin-bottom:18px; }
+  button{ font-family:var(--font-body); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="starfield"></canvas>
+  <video id="video" autoplay playsinline muted></video>
+
+  <div id="ui-layer">
+    <div id="visitor-counter" class="interactive">Today's visitors <b id="visitor-count">0</b></div>
+    <button id="fullscreen-btn" class="interactive" title="Toggle fullscreen">⛶</button>
+
+    <!-- ATTRACT -->
+    <div class="screen active" id="screen-attract">
+      <div class="eyebrow">Periyar Science &amp; Technology Centre</div>
+      <div class="title-en">SCIENCE EXPERIMENT KIOSK</div>
+      <div class="title-ta ta">அறிவியல் பரிசோதனை கியோஸ்க்</div>
+      <div class="tagline">
+        Ten hands-on experiments. Pick the right part with your hand to complete each one.
+        <span class="ta">பத்து செய்முறை பரிசோதனைகள். ஒவ்வொன்றையும் முடிக்க சரியான பாகத்தை உங்கள் கையால் எடுங்கள்.</span>
+      </div>
+      <div class="hand-prompt">
+        <span class="hand-prompt-icon">✋</span>
+        <span>Show your hand to the camera to begin<br><span class="ta" style="font-size:.85em;">தொடங்க உங்கள் கையை கேமராவிற்கு காட்டுங்கள்</span></span>
+      </div>
+    </div>
+
+    <!-- TUTORIAL -->
+    <div class="screen" id="screen-tutorial">
+      <div class="eyebrow">How to play</div>
+      <div class="title-ta ta" style="font-size:clamp(18px,2.6vw,26px);">எப்படி விளையாடுவது</div>
+      <div class="gesture-grid">
+        <div class="gesture-card">
+          <div class="g-icon">☝️</div>
+          <div class="g-name">MOVE HAND</div>
+          <div class="g-desc">Your hand controls the cursor.<span class="ta">உங்கள் கை கர்சரை கட்டுப்படுத்தும்</span></div>
+        </div>
+        <div class="gesture-card">
+          <div class="g-icon">🤏</div>
+          <div class="g-name">PINCH TO PICK UP</div>
+          <div class="g-desc">Pinch near a part to grab it.<span class="ta">ஒரு பாகத்தை எடுக்க பிஞ்ச் செய்யுங்கள்</span></div>
+        </div>
+        <div class="gesture-card">
+          <div class="g-icon">✋</div>
+          <div class="g-name">OPEN HAND TO DROP</div>
+          <div class="g-desc">Open your palm to release it.<span class="ta">விட உள்ளங்கையை திறக்கவும்</span></div>
+        </div>
+      </div>
+      <div class="menu-hint">No keyboard or mouse needed / விசைப்பலகை தேவையில்லை</div>
+    </div>
+
+    <!-- MENU -->
+    <div class="screen" id="screen-menu">
+      <div class="eyebrow">Choose an experiment</div>
+      <div class="title-ta ta" style="font-size:clamp(18px,2.6vw,26px); margin-bottom:6px;">ஒரு பரிசோதனையை தேர்ந்தெடுக்கவும்</div>
+      <div id="menu-grid"></div>
+      <div class="menu-hint">Pinch on a card to select it / அட்டையில் பிஞ்ச் செய்து தேர்ந்தெடுக்கவும்</div>
+    </div>
+
+    <!-- INSTRUCTION -->
+    <div class="screen" id="screen-instruction">
+      <div class="instr-icon" id="instr-icon">💡</div>
+      <div class="eyebrow" id="instr-eyebrow">YOUR TASK</div>
+      <div class="title-en" style="font-size:clamp(24px,4vw,42px);" id="instr-title-en">Light the Bulb</div>
+      <div class="title-ta ta" id="instr-title-ta">விளக்கை ஏற்றுங்கள்</div>
+      <div class="tagline" id="instr-desc-en">Place the battery to light the bulb.<span class="ta" id="instr-desc-ta">விளக்கை ஏற்ற மின்கலனை வையுங்கள்</span></div>
+    </div>
+
+    <!-- CHALLENGE -->
+    <div class="screen" id="screen-challenge">
+      <div id="hud-back">⬅ <span>Hold a fist to return to menu<span class="ta" style="display:block;">முஷ்டியை வைத்திருந்தால் பட்டியலுக்கு</span></span></div>
+      <div id="hud-top">
+        <div class="challenge-card">
+          <div class="challenge-eyebrow">YOUR CHALLENGE</div>
+          <div class="challenge-title" id="challenge-title-en">Light the Bulb</div>
+          <div class="challenge-title-ta ta" id="challenge-title-ta">விளக்கை ஏற்றுங்கள்</div>
+        </div>
+      </div>
+      <div id="hud-timer">45</div>
+      <div id="hud-gesture"><span class="dot" id="gesture-dot">✋</span><span id="gesture-label">Ready</span></div>
+      <div id="hud-badge-count">Badges earned <b id="badge-count">0</b></div>
+
+      <div id="scene-container"></div>
+      <div id="tray">
+        <div class="tray-slot" id="tray-0" data-type=""><div class="tray-label" id="tray-label-0"></div></div>
+        <div class="tray-slot" id="tray-1" data-type=""><div class="tray-label" id="tray-label-1"></div></div>
+        <div class="tray-slot" id="tray-2" data-type=""><div class="tray-label" id="tray-label-2"></div></div>
+      </div>
+      <div class="toast" id="wrong-toast">NOT QUITE — TRY AGAIN<span class="ta">சரியில்லை — மீண்டும் முயற்சிக்கவும்</span></div>
+    </div>
+
+    <!-- REVEAL -->
+    <div class="screen" id="screen-reveal">
+      <div class="reveal-panel">
+        <div id="reveal-icon">💡</div>
+        <div class="fact-label" id="reveal-label">HOW IT WORKS</div>
+        <div class="fact-en" id="fact-en">…</div>
+        <div class="fact-ta ta" id="fact-ta">…</div>
+        <div class="badge-pill" id="badge-pill" style="display:none;">⚡ Power Source Pro</div>
+        <div class="reveal-progress"><div class="reveal-progress-fill" id="reveal-progress-fill"></div></div>
+      </div>
+    </div>
+
+    <div id="hand-cursor"></div>
+    <div id="dragged-icon"></div>
+
+    <div id="privacy-note">
+      🔒 No video is recorded or stored. The camera is used only for live hand tracking.
+      <span class="ta">🔒 எந்த வீடியோவும் பதிவு செய்யப்படவில்லை. கேமரா நேரடி கை கண்காணிப்புக்கு மட்டுமே பயன்படுத்தப்படுகிறது.</span>
+    </div>
+  </div>
+
+  <div id="camera-error">
+    <div class="g-icon">📷</div>
+    <div class="title-en" style="font-size:26px;">CAMERA NOT AVAILABLE</div>
+    <div class="tagline">Please contact a gallery staff member for assistance.<span class="ta">உதவிக்கு தயவுசெய்து பணியாளரை தொடர்பு கொள்ளவும்.</span></div>
+  </div>
+</div>
+
+<script src="vendor/mediapipe/camera_utils.js"></script>
+<script src="vendor/mediapipe/hands.js"></script>
+<script>
+/* ============================================================
+   SCIENCE EXPERIMENT KIOSK — 10-experiment pick-and-place engine
+   Periyar Science & Technology Centre
+   ============================================================ */
+
+/* ---------- Circuit-only SVG icon set (kept from the original build) ---------- */
+const CIRCUIT_ICONS = {
+  battery: (active) => `<svg viewBox="0 0 100 100" class="icon-svg${active?' energized':''}">
+    <rect x="14" y="34" width="52" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="5"/>
+    <rect x="66" y="42" width="12" height="16" rx="2" fill="currentColor"/>
+    <text x="24" y="57" font-size="24" fill="currentColor" font-family="Arial" font-weight="bold">+</text>
+    <text x="46" y="56" font-size="24" fill="currentColor" font-family="Arial" font-weight="bold">&#8722;</text>
+  </svg>`,
+  switch: (active) => `<svg viewBox="0 0 100 100" class="icon-svg${active?' energized':''}">
+    <line x1="8" y1="65" x2="26" y2="65" stroke="currentColor" stroke-width="5"/>
+    <line x1="74" y1="65" x2="92" y2="65" stroke="currentColor" stroke-width="5"/>
+    <circle cx="26" cy="65" r="7" fill="currentColor"/><circle cx="74" cy="65" r="7" fill="currentColor"/>
+    <line x1="26" y1="65" x2="68" y2="32" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  </svg>`,
+  diode: (active) => `<svg viewBox="0 0 100 100" class="icon-svg${active?' energized':''}">
+    <line x1="6" y1="50" x2="32" y2="50" stroke="currentColor" stroke-width="5"/>
+    <polygon points="32,26 32,74 64,50" fill="currentColor"/>
+    <line x1="64" y1="26" x2="64" y2="74" stroke="currentColor" stroke-width="6"/>
+    <line x1="64" y1="50" x2="94" y2="50" stroke="currentColor" stroke-width="5"/>
+  </svg>`,
+  bulb: (active) => `<svg viewBox="0 0 100 100" class="icon-svg${active?' energized':''}">
+    <circle cx="50" cy="42" r="27" fill="${active ? 'rgba(244,185,66,.35)' : 'none'}" stroke="currentColor" stroke-width="5"/>
+    <path d="M36 28 L64 56 M64 28 L36 56" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <rect x="38" y="68" width="24" height="16" rx="3" fill="currentColor" opacity="0.85"/>
+  </svg>`,
+};
+
+/* ============================================================
+   EXPERIMENT DEFINITIONS
+   sceneHtml: absolute-positioned HTML for #scene-container (700x320 box)
+              every drop target is a .slot-mount with data-correct="<type>"
+   tray:      exactly 3 items {type, emoji, en, ta} — for 9/10 experiments,
+              1 is correct and 2 are distractors; Water Cycle uses 3 correct
+              items (one per slot) since it has three slots, not one.
+   anim:      which success animation class(es) to apply to a filled slot's icon
+   ============================================================ */
+const EXPERIMENTS = [
+  {
+    id:'circuit', menuIcon:'💡',
+    en:'Electric Circuit', ta:'மின் சுற்று',
+    instrEn:'Place the battery to light the bulb.', instrTa:'விளக்கை ஏற்ற மின்கலனை வையுங்கள்.',
+    useSvgIcons:true, anim:'glow',
+    sceneHtml:`
+      <svg class="scene-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path class="wire" id="wire-path" d="M 14 73 L 14 20 L 86 20 L 86 73 L 68 73"/>
+      </svg>
+      <div class="device-mount" id="output-el" style="left:86%; top:20%;"></div>
+      <div class="slot-mount" id="slot-0" data-correct="battery" style="left:23%; top:73%;">
+        <div class="slot-hint">Drop here<span class="ta">இங்கே வையுங்கள்</span></div>
+      </div>`,
+    outputStart:'bulb', outputId:'output-el',
+    tray:[
+      {type:'battery', emoji:'🔋', en:'Battery', ta:'மின்கலன்'},
+      {type:'switch',  emoji:'🔘', en:'Switch',  ta:'சுவிட்ச்'},
+      {type:'diode',   emoji:'⚡', en:'Diode',   ta:'டையோட்'},
+    ],
+    factEn:'A battery provides the voltage that pushes electric current around the circuit. With the loop complete, current flows through the filament and the bulb lights up.',
+    factTa:'மின்கலன் மின்சுற்றில் மின்னோட்டத்தை தள்ளும் மின்னழுத்தத்தை வழங்குகிறது. சுற்று முடிந்தவுடன், மின்னோட்டம் இழையின் வழியாக பாய்ந்து விளக்கு ஒளிர்கிறது.',
+    badge:'⚡ Power Source Pro',
+  },
+  {
+    id:'heart', menuIcon:'❤️',
+    en:'Human Heart', ta:'மனித இதயம்',
+    instrEn:'Place the heart in the correct body position.', instrTa:'இதயத்தை சரியான உடல் இடத்தில் வையுங்கள்.',
+    anim:'pulse',
+    sceneHtml:`
+      <div class="scene-emoji" style="left:50%; top:56%;">🧍</div>
+      <div class="slot-mount" id="slot-0" data-correct="heart" style="left:50%; top:32%;">
+        <div class="slot-hint">Place on the chest<span class="ta">மார்பில் வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'heart',  emoji:'❤️', en:'Heart',  ta:'இதயம்'},
+      {type:'lungs',  emoji:'🫁', en:'Lungs',  ta:'நுரையீரல்'},
+      {type:'bone',   emoji:'🦴', en:'Bone',   ta:'எலும்பு'},
+    ],
+    factEn:'The heart sits at the centre of your chest, slightly to the left, and pumps blood to every part of your body through a network of blood vessels.',
+    factTa:'இதயம் உங்கள் மார்பின் நடுவில், சற்று இடதுபுறமாக அமைந்துள்ளது, மேலும் இரத்த நாளங்கள் வழியாக உடலின் ஒவ்வொரு பகுதிக்கும் இரத்தத்தை பம்ப் செய்கிறது.',
+    badge:'❤️ Body Expert',
+  },
+  {
+    id:'motor', menuIcon:'⚙️',
+    en:'Electric Motor', ta:'மின் மோட்டார்',
+    instrEn:'Place the magnet to make the motor rotate.', instrTa:'மோட்டாரை சுழற்ற காந்தத்தை வையுங்கள்.',
+    anim:'spin',
+    sceneHtml:`
+      <div class="scene-emoji" id="motor-context" style="left:34%; top:50%;">⚙️</div>
+      <div class="slot-mount" id="slot-0" data-correct="magnet" style="left:66%; top:50%;">
+        <div class="slot-hint">Place near the coil<span class="ta">சுருளுக்கு அருகில் வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'magnet',  emoji:'🧲', en:'Magnet',  ta:'காந்தம்'},
+      {type:'battery', emoji:'🔋', en:'Battery', ta:'மின்கலன்'},
+      {type:'wood',    emoji:'🪵', en:'Wood',    ta:'மரம்'},
+    ],
+    factEn:'An electric motor spins because a magnet\u2019s field pushes against current flowing through a coil of wire \u2014 that push is what makes it rotate.',
+    factTa:'மின் மோட்டார் சுழல்வதற்கு காரணம், ஒரு காந்தத்தின் புலம் ஒரு கம்பி சுருளின் வழியாக பாயும் மின்னோட்டத்திற்கு எதிராக தள்ளுவதே ஆகும் \u2014 அந்த தள்ளுதலே அதை சுழலச் செய்கிறது.',
+    badge:'⚙️ Motor Mechanic',
+    onSuccess:()=>{ const m=document.getElementById('motor-context'); if(m) m.classList.add('fx-spin'); },
+  },
+  {
+    id:'transport', menuIcon:'🚗',
+    en:'Transport', ta:'போக்குவரத்து',
+    instrEn:'Match the wheel to the vehicle.', instrTa:'சக்கரத்தை வாகனத்துடன் பொருத்துங்கள்.',
+    anim:'glow',
+    sceneHtml:`
+      <div class="scene-emoji" style="left:44%; top:44%;">🚗</div>
+      <div class="slot-mount" id="slot-0" data-correct="wheel" style="left:35%; top:68%;">
+        <div class="slot-hint">Place at the wheel<span class="ta">சக்கர இடத்தில் வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'wheel',      emoji:'🛞', en:'Wheel',      ta:'சக்கரம்'},
+      {type:'anchor',     emoji:'⚓', en:'Anchor',     ta:'நங்கூரம்'},
+      {type:'parachute',  emoji:'🪂', en:'Parachute',  ta:'பாராசூட்'},
+    ],
+    factEn:'Wheels reduce friction with the ground, letting a vehicle roll forward using far less effort than dragging it would take.',
+    factTa:'சக்கரங்கள் தரையுடனான உராய்வைக் குறைக்கின்றன, இது ஒரு வாகனத்தை இழுத்துச் செல்வதை விட மிகக் குறைந்த முயற்சியில் முன்னோக்கி உருளச் செய்கிறது.',
+    badge:'🛞 Wheel Wizard',
+  },
+  {
+    id:'reflection', menuIcon:'🪞',
+    en:'Reflection', ta:'பிரதிபலிப்பு',
+    instrEn:'Place the mirror to reflect the laser onto the target.', instrTa:'லேசரை இலக்கின் மீது பிரதிபலிக்க கண்ணாடியை வையுங்கள்.',
+    anim:'glow',
+    sceneHtml:`
+      <svg class="scene-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path class="dashline" id="laser-path" d="M 12 30 L 50 30 M 50 70 L 88 70"/>
+      </svg>
+      <div class="scene-emoji small" style="left:12%; top:30%;">🔴</div>
+      <div class="scene-emoji small" style="left:88%; top:70%;">🎯</div>
+      <div class="slot-mount" id="slot-0" data-correct="mirror" style="left:50%; top:50%;">
+        <div class="slot-hint">Place the mirror here<span class="ta">கண்ணாடியை இங்கே வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'mirror',  emoji:'🪞', en:'Mirror',  ta:'கண்ணாடி'},
+      {type:'window',  emoji:'🪟', en:'Window',  ta:'ஜன்னல்'},
+      {type:'brick',   emoji:'🧱', en:'Brick',   ta:'செங்கல்'},
+    ],
+    factEn:'Light bounces off a mirror at the same angle it arrives \u2014 this is the law of reflection: the angle of incidence equals the angle of reflection.',
+    factTa:'ஒளி வந்த அதே கோணத்தில் கண்ணாடியில் இருந்து திரும்புகிறது \u2014 இதை பிரதிபலிப்பு விதி என்கிறோம்: படு கோணம் பிரதிபலிப்பு கோணத்திற்கு சமம்.',
+    badge:'🪞 Light Bender',
+    onSuccess:()=>{
+      const p=document.getElementById('laser-path'); if(p) p.classList.add('energized');
+    },
+  },
+  {
+    id:'solar', menuIcon:'🪐',
+    en:'Solar System', ta:'சூரிய குடும்பம்',
+    instrEn:'Drag Earth to its correct orbit.', instrTa:'பூமியை சரியான சுற்றுப்பாதைக்கு இழுக்கவும்.',
+    anim:'glow',
+    sceneHtml:`
+      <svg class="scene-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <circle class="dashline" cx="50" cy="50" r="16"/>
+        <circle class="dashline" cx="50" cy="50" r="27"/>
+        <circle class="dashline" cx="50" cy="50" r="38"/>
+      </svg>
+      <div class="scene-emoji small" style="left:50%; top:50%; font-size:46px;">☀️</div>
+      <div class="slot-mount" id="slot-0" data-correct="earth" style="left:88%; top:50%; width:90px; height:90px; border-radius:50%;">
+        <div class="slot-hint">3rd orbit<span class="ta">3வது சுற்றுப்பாதை</span></div>
+      </div>`,
+    tray:[
+      {type:'earth',   emoji:'🌍', en:'Earth',   ta:'பூமி'},
+      {type:'moon',    emoji:'🌙', en:'Moon',    ta:'சந்திரன்'},
+      {type:'saturn',  emoji:'🪐', en:'Saturn',  ta:'சனி'},
+    ],
+    factEn:'Earth is the third planet from the Sun and completes one full orbit \u2014 one year \u2014 every 365 days.',
+    factTa:'பூமி சூரியனில் இருந்து மூன்றாவது கிரகம் ஆகும், மேலும் ஒவ்வொரு 365 நாட்களுக்கும் ஒரு முழு சுற்றுப்பாதையை \u2014 ஒரு ஆண்டை \u2014 நிறைவு செய்கிறது.',
+    badge:'🪐 Orbit Master',
+  },
+  {
+    id:'magnetism', menuIcon:'🧲',
+    en:'Magnetism', ta:'காந்தவியல்',
+    instrEn:'Place the iron nail near the magnet.', instrTa:'இரும்பு ஆணியை காந்தத்திற்கு அருகில் வையுங்கள்.',
+    anim:'attract',
+    sceneHtml:`
+      <div class="scene-emoji" id="magnet-context" style="left:30%; top:50%;">🧲</div>
+      <div class="slot-mount" id="slot-0" data-correct="nail" style="left:62%; top:50%; --ax:-40px;">
+        <div class="slot-hint">Place the nail here<span class="ta">ஆணியை இங்கே வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'nail',    emoji:'🔩', en:'Iron Nail',      ta:'இரும்பு ஆணி'},
+      {type:'stick',   emoji:'🪵', en:'Wooden Stick',   ta:'மரக்கட்டை'},
+      {type:'spoon',   emoji:'🥄', en:'Plastic Spoon',  ta:'பிளாஸ்டிக் கரண்டி'},
+    ],
+    factEn:'Iron is magnetic, so a magnet pulls an iron nail toward it \u2014 materials like wood or plastic aren\u2019t affected at all.',
+    factTa:'இரும்பு காந்தத் தன்மை கொண்டது, எனவே ஒரு காந்தம் இரும்பு ஆணியை தன் பக்கம் இழுக்கிறது \u2014 மரம் அல்லது பிளாஸ்டிக் போன்ற பொருட்கள் எந்த வகையிலும் பாதிக்கப்படுவதில்லை.',
+    badge:'🧲 Magnet Master',
+  },
+  {
+    id:'plant', menuIcon:'🌱',
+    en:'Plant Science', ta:'தாவர அறிவியல்',
+    instrEn:'Place sunlight on the plant.', instrTa:'சூரிய ஒளியை செடியின் மீது வையுங்கள்.',
+    anim:'glow',
+    sceneHtml:`
+      <div class="scene-emoji" id="plant-context" style="left:50%; top:66%;">🪴</div>
+      <div class="slot-mount" id="slot-0" data-correct="sun" style="left:50%; top:26%;">
+        <div class="slot-hint">Place above the plant<span class="ta">செடிக்கு மேலே வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'sun',    emoji:'☀️', en:'Sunlight', ta:'சூரிய ஒளி'},
+      {type:'moon',   emoji:'🌙', en:'Moon',     ta:'சந்திரன்'},
+      {type:'cloud',  emoji:'☁️', en:'Cloud',    ta:'மேகம்'},
+    ],
+    factEn:'Plants use sunlight to make their own food through photosynthesis \u2014 without light, they cannot grow.',
+    factTa:'தாவரங்கள் ஒளிச்சேர்க்கை மூலம் சூரிய ஒளியைப் பயன்படுத்தி தங்கள் சொந்த உணவை தயாரிக்கின்றன \u2014 ஒளி இல்லாமல், அவை வளர முடியாது.',
+    badge:'🌱 Green Thumb',
+    onSuccess:()=>{ const p=document.getElementById('plant-context'); if(p) p.classList.add('fx-grow'); },
+  },
+  {
+    id:'watercycle', menuIcon:'💧',
+    en:'Water Cycle', ta:'நீர் சுழற்சி',
+    instrEn:'Arrange evaporation, condensation and rain in order.', instrTa:'ஆவியாதல், ஒடுங்குதல், மழையை வரிசைப்படுத்துங்கள்.',
+    anim:'glow',
+    sceneHtml:`
+      <div class="scene-emoji small" style="left:6%; top:76%; font-size:56px;">🌊</div>
+      <div class="slot-mount" id="slot-0" data-correct="evap" style="left:30%; top:50%;">
+        <div class="slot-hint">1. Evaporation<span class="ta">1. ஆவியாதல்</span></div>
+      </div>
+      <div class="slot-mount" id="slot-1" data-correct="cond" style="left:56%; top:32%;">
+        <div class="slot-hint">2. Condensation<span class="ta">2. ஒடுங்குதல்</span></div>
+      </div>
+      <div class="slot-mount" id="slot-2" data-correct="rain" style="left:82%; top:50%;">
+        <div class="slot-hint">3. Rain<span class="ta">3. மழை</span></div>
+      </div>`,
+    tray:[
+      {type:'evap', emoji:'💦', en:'Evaporation',  ta:'ஆவியாதல்'},
+      {type:'cond', emoji:'☁️', en:'Condensation', ta:'ஒடுங்குதல்'},
+      {type:'rain', emoji:'🌧️', en:'Rain',         ta:'மழை'},
+    ],
+    factEn:'Water evaporates into the sky, condenses into clouds, and falls back as rain \u2014 a cycle that never stops.',
+    factTa:'நீர் ஆவியாகி வானத்தில் செல்கிறது, மேகங்களாக ஒடுங்குகிறது, மேலும் மழையாக மீண்டும் விழுகிறது \u2014 இது ஒருபோதும் நிற்காத ஒரு சுழற்சி.',
+    badge:'💧 Cycle Champion',
+  },
+  {
+    id:'general', menuIcon:'🔬',
+    en:'General Science', ta:'பொது அறிவியல்',
+    instrEn:'Match the microscope with the scientist.', instrTa:'நுண்ணோக்கியை விஞ்ஞானியுடன் பொருத்துங்கள்.',
+    anim:'glow',
+    sceneHtml:`
+      <div class="scene-emoji" style="left:38%; top:50%;">🧑‍🔬</div>
+      <div class="slot-mount" id="slot-0" data-correct="microscope" style="left:66%; top:58%;">
+        <div class="slot-hint">Place near their hand<span class="ta">கையருகே வையுங்கள்</span></div>
+      </div>`,
+    tray:[
+      {type:'microscope', emoji:'🔬', en:'Microscope', ta:'நுண்ணோக்கி'},
+      {type:'telescope',  emoji:'🔭', en:'Telescope',  ta:'தொலைநோக்கி'},
+      {type:'brush',       emoji:'🖌️', en:'Paintbrush', ta:'தூரிகை'},
+    ],
+    factEn:'Scientists use microscopes to study things far too small to see with the naked eye, from cells to bacteria.',
+    factTa:'விஞ்ஞானிகள் நுண்ணோக்கிகளை பயன்படுத்தி, செல்கள் முதல் பாக்டீரியா வரை நிர்வாணக் கண்ணால் காண முடியாத மிகச் சிறிய பொருட்களை ஆராய்கின்றனர்.',
+    badge:'🔬 Lab Legend',
+  },
+];
+
+/* ---------- Element refs ---------- */
+const $ = (id) => document.getElementById(id);
+const screens = {
+  attract:$('screen-attract'), tutorial:$('screen-tutorial'), menu:$('screen-menu'),
+  instruction:$('screen-instruction'), challenge:$('screen-challenge'), reveal:$('screen-reveal')
+};
+const video = $('video');
+const starfieldCanvas = $('starfield');
+const starCtx = starfieldCanvas.getContext('2d');
+const cameraError = $('camera-error');
+const handCursor = $('hand-cursor');
+const draggedIcon = $('dragged-icon');
+const sceneContainer = $('scene-container');
+const menuGrid = $('menu-grid');
+const trayEls = [0,1,2].map(i => $('tray-' + i));
+const trayLabelEls = [0,1,2].map(i => $('tray-label-' + i));
+
+/* ---------- Build menu ---------- */
+EXPERIMENTS.forEach((exp, idx) => {
+  const card = document.createElement('div');
+  card.className = 'menu-card';
+  card.id = 'menu-card-' + idx;
+  card.innerHTML = `<div class="m-icon">${exp.menuIcon}</div><div class="m-title">${exp.en}</div><div class="m-title-ta ta">${exp.ta}</div>`;
+  menuGrid.appendChild(card);
+});
+const menuCardEls = EXPERIMENTS.map((_, i) => $('menu-card-' + i));
+
+/* ---------- Starfield ---------- */
+let stars = [];
+function resizeCanvases(){
+  starfieldCanvas.width = window.innerWidth; starfieldCanvas.height = window.innerHeight; initStars();
+}
+window.addEventListener('resize', resizeCanvases);
+function initStars(){
+  const count = Math.floor((window.innerWidth * window.innerHeight) / 9000);
+  stars = Array.from({length:count}, () => ({
+    x: Math.random()*starfieldCanvas.width, y: Math.random()*starfieldCanvas.height,
+    r: Math.random()*1.6 + 0.3, speed: Math.random()*0.15 + 0.02, tw: Math.random()*Math.PI*2
+  }));
+}
+function drawStars(){
+  starCtx.fillStyle = '#050814'; starCtx.fillRect(0,0,starfieldCanvas.width, starfieldCanvas.height);
+  const grad = starCtx.createRadialGradient(starfieldCanvas.width*0.5, starfieldCanvas.height*0.4, 0, starfieldCanvas.width*0.5, starfieldCanvas.height*0.4, starfieldCanvas.width*0.7);
+  grad.addColorStop(0, '#131c46'); grad.addColorStop(1, '#050814');
+  starCtx.fillStyle = grad; starCtx.fillRect(0,0,starfieldCanvas.width, starfieldCanvas.height);
+  stars.forEach(s=>{
+    s.tw += 0.02; const alpha = 0.4 + Math.sin(s.tw)*0.35;
+    starCtx.beginPath(); starCtx.fillStyle = `rgba(243,239,228,${Math.max(0,alpha)})`;
+    starCtx.arc(s.x, s.y, s.r, 0, Math.PI*2); starCtx.fill();
+    s.y += s.speed; if (s.y > starfieldCanvas.height) { s.y = 0; s.x = Math.random()*starfieldCanvas.width; }
+  });
+}
+function renderLoop(){ drawStars(); requestAnimationFrame(renderLoop); }
+
+/* ---------- Gesture classification ---------- */
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function classifyGesture(lm){
+  const wrist = lm[0]; const handSize = dist(lm[0], lm[9]) || 0.001;
+  const pinchDist = dist(lm[4], lm[8]) / handSize;
+  const fingers = [ [8,6], [12,10], [16,14], [20,18] ];
+  let extended = 0;
+  fingers.forEach(([tip,pip])=>{ if (dist(wrist, lm[tip]) > dist(wrist, lm[pip]) * 1.12) extended++; });
+  if (pinchDist < 0.45) return 'pinch';
+  if (extended <= 1) return 'fist';
+  if (extended >= 3) return 'palm';
+  return 'move';
+}
+const GESTURE_META = {
+  pinch:{icon:'🤏',label:'Holding'}, palm:{icon:'✋',label:'Ready to release'},
+  fist:{icon:'✊',label:'Cancel / back'}, move:{icon:'☝️',label:'Hover'}, none:{icon:'…',label:'No hand shown'}
+};
+
+/* ---------- State machine ---------- */
+let STATE = 'attract';
+let tutorialShown = false;
+let currentExp = null;
+let currentSlots = [];
+let filledCount = 0;
+let heldType = null, heldTrayIndex = -1;
+let wasPinching = false;
+let menuWasPinching = false;
+let fistHoldStart = null;
+let lastCursorX = window.innerWidth/2, lastCursorY = window.innerHeight/2;
+let challengeEndsAt = 0, revealEndsAt = 0, instructionEndsAt = 0;
+let noHandSince = null, handPresentSince = null;
+let badgesEarned = 0;
+let lastSuccess = false;
+
+const CHALLENGE_DURATION = 45000;
+const REVEAL_DURATION = 20000;
+const INSTRUCTION_DURATION = 3800;
+const ATTRACT_ENTRY_HOLD = 500;
+const IDLE_ABANDON = 45000;
+const FIST_BACK_HOLD = 900;
+
+function setScreen(name){
+  Object.entries(screens).forEach(([k,el])=> el.classList.toggle('active', k===name));
+  STATE = name;
+}
+
+function goAttract(){
+  setScreen('attract');
+  video.classList.remove('visible');
+  handCursor.classList.remove('visible');
+  draggedIcon.classList.remove('show');
+  noHandSince = null; handPresentSince = null;
+  heldType = null; heldTrayIndex = -1; wasPinching = false; fistHoldStart = null;
+}
+
+function goTutorialOrMenu(){
+  video.classList.add('visible');
+  incrementVisitorCount();
+  if (!tutorialShown){
+    tutorialShown = true;
+    setScreen('tutorial');
+    setTimeout(()=>{ if (STATE==='tutorial') goMenu(); }, 6500);
+  } else {
+    goMenu();
+  }
+}
+
+function goMenu(){
+  setScreen('menu');
+  menuWasPinching = false;
+  noHandSince = null;
+}
+
+function selectExperiment(exp){
+  currentExp = exp;
+  $('instr-icon').textContent = exp.menuIcon;
+  $('instr-title-en').textContent = exp.en;
+  $('instr-title-ta').textContent = exp.ta;
+  $('instr-desc-en').childNodes[0].textContent = exp.instrEn + ' ';
+  $('instr-desc-ta').textContent = exp.instrTa;
+  setScreen('instruction');
+  instructionEndsAt = Date.now() + INSTRUCTION_DURATION;
+}
+
+function iconMarkup(exp, type, active){
+  if (exp.useSvgIcons && CIRCUIT_ICONS[type]) return CIRCUIT_ICONS[type](active);
+  const item = exp.tray.find(t => t.type === type);
+  return item ? item.emoji : '';
+}
+
+function shuffled(arr){
+  const a = [...arr];
+  for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function startChallenge(exp){
+  currentExp = exp;
+  filledCount = 0;
+  heldType = null; heldTrayIndex = -1; wasPinching = false; fistHoldStart = null;
+  lastSuccess = false;
+
+  $('challenge-title-en').textContent = exp.en;
+  $('challenge-title-ta').textContent = exp.ta;
+
+  sceneContainer.innerHTML = exp.sceneHtml;
+  if (exp.outputId && exp.outputStart){
+    const outEl = document.getElementById(exp.outputId);
+    if (outEl) outEl.innerHTML = iconMarkup(exp, exp.outputStart, false);
+  }
+  currentSlots = Array.from(sceneContainer.querySelectorAll('.slot-mount'));
+
+  const trayOrder = shuffled(exp.tray);
+  trayOrder.forEach((item, i) => {
+    trayEls[i].dataset.type = item.type;
+    trayEls[i].classList.remove('empty');
+    trayEls[i].textContent = item.emoji;
+    trayLabelEls[i].innerHTML = `${item.en}<span class="ta">${item.ta}</span>`;
+  });
+
+  challengeEndsAt = Date.now() + CHALLENGE_DURATION;
+  noHandSince = null;
+  setScreen('challenge');
+  speak(exp.instrEn);
+}
+
+function speak(text){
+  try{
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95; u.pitch = 1.0;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+let wrongToastTimer = null;
+function showWrongToast(){
+  const t = $('wrong-toast'); t.classList.add('show');
+  clearTimeout(wrongToastTimer);
+  wrongToastTimer = setTimeout(()=> t.classList.remove('show'), 900);
+}
+
+function finishChallenge(success){
+  draggedIcon.classList.remove('show');
+  lastSuccess = success;
+  $('reveal-label').textContent = success ? 'HOW IT WORKS' : "TIME'S UP — HOW IT WORKS";
+  $('reveal-icon').textContent = currentExp.menuIcon;
+  $('fact-en').textContent = currentExp.factEn;
+  $('fact-ta').textContent = currentExp.factTa;
+
+  const badgeEl = $('badge-pill');
+  if (success){
+    badgeEl.style.display = 'inline-flex';
+    badgeEl.textContent = currentExp.badge;
+    badgesEarned++; $('badge-count').textContent = badgesEarned;
+  } else {
+    badgeEl.style.display = 'none';
+  }
+  revealEndsAt = Date.now() + REVEAL_DURATION;
+  setScreen('reveal');
+}
+
+function afterReveal(handCurrentlyPresent){
+  if (handCurrentlyPresent){ goMenu(); }
+  else { goAttract(); }
+}
+
+/* ---------- Visitor counter ---------- */
+function incrementVisitorCount(){
+  const today = new Date().toISOString().slice(0,10);
+  let data; try{ data = JSON.parse(localStorage.getItem('science_kiosk_visitors') || '{}'); }catch(e){ data = {}; }
+  if (data.date !== today) data = { date: today, count: 0 };
+  data.count++;
+  localStorage.setItem('science_kiosk_visitors', JSON.stringify(data));
+  $('visitor-count').textContent = data.count;
+}
+function loadVisitorCount(){
+  const today = new Date().toISOString().slice(0,10);
+  let data; try{ data = JSON.parse(localStorage.getItem('science_kiosk_visitors') || '{}'); }catch(e){ data = {}; }
+  $('visitor-count').textContent = (data.date === today) ? data.count : 0;
+}
+
+/* ---------- Drag & drop ---------- */
+function rectContains(rect, x, y, pad){
+  return x > rect.left - pad && x < rect.right + pad && y > rect.top - pad && y < rect.bottom + pad;
+}
+
+function tryGrab(x, y){
+  for (let i=0;i<trayEls.length;i++){
+    if (trayEls[i].classList.contains('empty')) continue;
+    const r = trayEls[i].getBoundingClientRect();
+    if (rectContains(r, x, y, 28)){
+      heldType = trayEls[i].dataset.type;
+      heldTrayIndex = i;
+      trayEls[i].classList.add('empty');
+      trayEls[i].textContent = '';
+      draggedIcon.innerHTML = iconMarkup(currentExp, heldType, false);
+      draggedIcon.classList.add('show');
+      return;
+    }
+  }
+}
+function iconMarkupPlain(type){
+  const item = currentExp.tray.find(t => t.type === type);
+  return item ? item.emoji : '';
+}
+
+function updateDragPosition(x, y){
+  draggedIcon.style.left = x + 'px';
+  draggedIcon.style.top = y + 'px';
+}
+
+function returnHeldToTray(){
+  if (heldTrayIndex >= 0){
+    trayEls[heldTrayIndex].classList.remove('empty');
+    trayEls[heldTrayIndex].innerHTML = iconMarkup(currentExp, heldType, false);
+  }
+  heldType = null; heldTrayIndex = -1;
+  draggedIcon.classList.remove('show');
+}
+
+function applyAnimClass(el, animType){
+  if (animType === 'glow') el.classList.add('fx-glow');
+  else if (animType === 'pulse') el.classList.add('fx-pulse');
+  else if (animType === 'spin') el.classList.add('fx-spin');
+  else if (animType === 'attract') el.classList.add('fx-attract');
+  else el.classList.add('fx-glow');
+}
+
+function tryDrop(x, y){
+  let target = null;
+  for (const slot of currentSlots){
+    if (slot.classList.contains('filled')) continue;
+    const r = slot.getBoundingClientRect();
+    if (rectContains(r, x, y, 18)){ target = slot; break; }
+  }
+  if (!target){ returnHeldToTray(); return; }
+
+  if (target.dataset.correct === heldType){
+    target.innerHTML = iconMarkup(currentExp, heldType, true);
+    target.classList.add('filled');
+    const iconEl = target.firstElementChild || target;
+    applyAnimClass(target, currentExp.anim);
+
+    if (currentExp.id === 'circuit' && currentExp.outputId){
+      const outEl = document.getElementById(currentExp.outputId);
+      if (outEl) outEl.innerHTML = iconMarkup(currentExp, currentExp.outputStart, true);
+      const wire = document.getElementById('wire-path');
+      if (wire) wire.classList.add('energized');
+    }
+    if (typeof currentExp.onSuccess === 'function') currentExp.onSuccess();
+
+    heldType = null; heldTrayIndex = -1;
+    draggedIcon.classList.remove('show');
+    filledCount++;
+    if (filledCount >= currentSlots.length){
+      setTimeout(()=>{ if (STATE==='challenge') finishChallenge(true); }, 900);
+    }
+  } else {
+    showWrongToast();
+    returnHeldToTray();
+  }
+}
+
+/* ---------- MediaPipe Hands ---------- */
+function onResults(results){
+  const now = Date.now();
+  const hasHand = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
+  const lm = hasHand ? results.multiHandLandmarks[0] : null;
+  const gesture = lm ? classifyGesture(lm) : 'none';
+
+  const meta = GESTURE_META[gesture] || GESTURE_META.none;
+  const gd = $('gesture-dot'), gl = $('gesture-label');
+  if (gd) gd.textContent = meta.icon;
+  if (gl) gl.textContent = meta.label;
+
+  let cx = lastCursorX, cy = lastCursorY;
+  if (lm){
+    const midX = (lm[4].x + lm[8].x) / 2;
+    const midY = (lm[4].y + lm[8].y) / 2;
+    cx = (1 - midX) * window.innerWidth;
+    cy = midY * window.innerHeight;
+    lastCursorX = cx; lastCursorY = cy;
+  }
+
+  handleStateLogic(hasHand, gesture, cx, cy, now);
+}
+
+function handleStateLogic(hasHand, gesture, cx, cy, now){
+  if (STATE === 'attract'){
+    if (hasHand){
+      if (!handPresentSince) handPresentSince = now;
+      if (now - handPresentSince > ATTRACT_ENTRY_HOLD) goTutorialOrMenu();
+    } else { handPresentSince = null; }
+    return;
+  }
+
+  if (STATE === 'menu'){
+    if (hasHand){
+      noHandSince = null;
+      handCursor.classList.add('visible');
+      handCursor.style.left = cx + 'px'; handCursor.style.top = cy + 'px';
+      handCursor.classList.toggle('pinch', gesture === 'pinch');
+      handCursor.classList.toggle('fist', false);
+
+      menuCardEls.forEach(c => c.classList.remove('hover'));
+      let hoveredIdx = -1;
+      for (let i=0;i<menuCardEls.length;i++){
+        const r = menuCardEls[i].getBoundingClientRect();
+        if (rectContains(r, cx, cy, 10)){ hoveredIdx = i; menuCardEls[i].classList.add('hover'); break; }
+      }
+      if (gesture === 'pinch' && !menuWasPinching && hoveredIdx >= 0){
+        selectExperiment(EXPERIMENTS[hoveredIdx]);
+      }
+      menuWasPinching = (gesture === 'pinch');
+    } else {
+      handCursor.classList.remove('visible');
+      if (!noHandSince) noHandSince = now;
+      if (now - noHandSince > IDLE_ABANDON) goAttract();
+    }
+    return;
+  }
+
+  if (STATE === 'instruction'){
+    if (!hasHand){
+      if (!noHandSince) noHandSince = now;
+      if (now - noHandSince > IDLE_ABANDON) { goAttract(); return; }
+    } else { noHandSince = null; }
+    if (now >= instructionEndsAt) startChallenge(currentExp);
+    return;
+  }
+
+  if (STATE === 'challenge'){
+    if (hasHand){
+      noHandSince = null;
+      handCursor.classList.add('visible');
+      handCursor.style.left = cx + 'px'; handCursor.style.top = cy + 'px';
+      handCursor.classList.toggle('pinch', gesture === 'pinch');
+      handCursor.classList.toggle('fist', gesture === 'fist');
+
+      if (gesture === 'fist'){
+        if (heldType !== null){
+          returnHeldToTray();
+          fistHoldStart = null;
+        } else {
+          if (!fistHoldStart) fistHoldStart = now;
+          if (now - fistHoldStart > FIST_BACK_HOLD){ goMenu(); return; }
+        }
+        wasPinching = false;
+      } else {
+        fistHoldStart = null;
+        if (gesture === 'pinch'){
+          if (heldType === null) tryGrab(cx, cy);
+          else updateDragPosition(cx, cy);
+          wasPinching = true;
+        } else {
+          if (wasPinching && heldType !== null) tryDrop(cx, cy);
+          wasPinching = false;
+        }
+      }
+    } else {
+      handCursor.classList.remove('visible');
+      if (heldType !== null){ returnHeldToTray(); wasPinching = false; }
+      fistHoldStart = null;
+      if (!noHandSince) noHandSince = now;
+      if (now - noHandSince > IDLE_ABANDON) goAttract();
+    }
+
+    const remaining = Math.max(0, Math.ceil((challengeEndsAt - now)/1000));
+    const timerEl = $('hud-timer');
+    timerEl.textContent = remaining;
+    timerEl.classList.toggle('warn', remaining <= 10);
+    if (now >= challengeEndsAt && filledCount < currentSlots.length) finishChallenge(false);
+    return;
+  }
+
+  if (STATE === 'reveal'){
+    const remaining = revealEndsAt - now;
+    const pct = Math.max(0, remaining / REVEAL_DURATION);
+    $('reveal-progress-fill').style.transform = `scaleX(${pct})`;
+    if (remaining <= 0) afterReveal(hasHand);
+    return;
+  }
+}
+
+/* ---------- Fullscreen ---------- */
+$('fullscreen-btn').addEventListener('click', ()=>{
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
+});
+
+/* ---------- Boot ---------- */
+async function boot(){
+  resizeCanvases();
+  loadVisitorCount();
+  renderLoop();
+  try{
+    const hands = new Hands({ locateFile: (file) => `vendor/mediapipe/${file}` });
+    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.6 });
+    hands.onResults(onResults);
+    const camera = new Camera(video, {
+      onFrame: async () => { await hands.send({ image: video }); },
+      width: 1280, height: 720
+    });
+    await camera.start();
+  } catch(err){
+    cameraError.classList.add('show');
+    console.error('Camera/MediaPipe init failed', err);
+  }
+}
+boot();
+</script>
+</body>
+</html>
