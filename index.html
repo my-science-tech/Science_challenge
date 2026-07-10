@@ -348,6 +348,7 @@
     <div class="g-icon">📷</div>
     <div class="title-en" style="font-size:26px;">CAMERA NOT AVAILABLE</div>
     <div class="tagline">Please contact a gallery staff member for assistance.<span class="ta">உதவிக்கு தயவுசெய்து பணியாளரை தொடர்பு கொள்ளவும்.</span></div>
+    <div id="camera-error-detail" style="margin-top:18px; font-size:12px; color:var(--text-dim); font-family:monospace; max-width:600px; word-break:break-word;"></div>
   </div>
 </div>
 
@@ -1059,10 +1060,37 @@ $('fullscreen-btn').addEventListener('click', ()=>{
 });
 
 /* ---------- Boot ---------- */
+function showCameraError(message){
+  cameraError.classList.add('show');
+  const detail = document.getElementById('camera-error-detail');
+  if (detail) detail.textContent = message;
+}
+
 async function boot(){
   resizeCanvases();
   loadVisitorCount();
   renderLoop();
+
+  // Check the MediaPipe scripts actually loaded before doing anything else.
+  // If either <script src="vendor/mediapipe/..."> tag 404'd, these globals
+  // will be undefined and every camera issue will look identical without this check.
+  if (typeof Hands === 'undefined'){
+    showCameraError('Script failed to load: vendor/mediapipe/hands.js (check file exists in repo / Network tab for 404)');
+    console.error('Hands class is undefined — hands.js did not load.');
+    return;
+  }
+  if (typeof Camera === 'undefined'){
+    showCameraError('Script failed to load: vendor/mediapipe/camera_utils.js (check file exists in repo / Network tab for 404)');
+    console.error('Camera class is undefined — camera_utils.js did not load.');
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showCameraError('navigator.mediaDevices.getUserMedia unavailable (page not served over HTTPS/localhost, or unsupported browser)');
+    console.error('getUserMedia unavailable in this context.');
+    return;
+  }
+
   try{
     const hands = new Hands({ locateFile: (file) => `vendor/mediapipe/${file}` });
     hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.6 });
@@ -1073,7 +1101,10 @@ async function boot(){
     });
     await camera.start();
   } catch(err){
-    cameraError.classList.add('show');
+    // err.name tells you the real cause: NotAllowedError (permission denied),
+    // NotFoundError (no camera hardware), NotReadableError (camera busy/in use
+    // by another app), OverconstrainedError (width/height not supported), etc.
+    showCameraError(`${err.name || 'Error'}: ${err.message || err}`);
     console.error('Camera/MediaPipe init failed', err);
   }
 }
